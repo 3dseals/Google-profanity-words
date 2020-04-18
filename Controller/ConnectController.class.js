@@ -1,4 +1,6 @@
 const Log = require('../Utils/Log.class');
+const MaskWord = require('../Utils/MaskWord.class');
+const User = require('../Model/User.class');
 
 class ConnectController {
 
@@ -32,7 +34,8 @@ class ConnectController {
                     }
                     break;
                 case 'msg' :
-                    ConnectController.Broadcast(ws, {type:data.type, msg:data.msg});
+                    ConnectController.AddPopular(data.msg);
+                    ConnectController.Broadcast(ws, {type:data.type, msg:MaskWord.Check(data.msg)});
                     break;
                 case 'ping' :
                     ConnectController.SendMsg(ws, {type:data.type});
@@ -48,7 +51,7 @@ class ConnectController {
 
     static AddUser(data)
     {
-        ConnectController.Users[data.name] = data;
+        ConnectController.Users[data.name] = new User(data);
         ConnectController.UserCount++;
 
         Log.Print(`AddUser: ${data.name} , online: ${ConnectController.UserCount}`);
@@ -87,13 +90,23 @@ class ConnectController {
     {
         if(cmd == '/popular')
         {
-            ConnectController.SendMsg(ws, {type:'msg', msg:''});
+            var word = '';
+            var count = 0;
+            for (var key in ConnectController.Words)
+            {
+                if(count < ConnectController.Words[key].count)
+                {
+                    word = key;
+                    count = ConnectController.Words[key].count;
+                }
+            }
+            ConnectController.SendMsg(ws, {type:'msg', msg:word});
         }else if(cmd == '/stats')
         {
             if(params && params.length > 1)
             {
                 var user = ConnectController.GetUserInfo(params[1]);
-                ConnectController.SendMsg(ws, {type:'msg', msg:JSON.stringify(user, null, 4)});
+                ConnectController.SendMsg(ws, {type:'msg', msg:user.GetOnlineTime()});
             }else
             {
                 ConnectController.SendMsg(ws, {type:'msg', msg:'/stats params error'});
@@ -104,6 +117,48 @@ class ConnectController {
             ConnectController.SendMsg(ws, {type:'msg', msg:'no command define'});
         }
     }
+
+    static Update()
+    {
+        ConnectController.CleanPopular();
+    }
+
+    static AddPopular(msg)
+    {
+        var time = Date.now();
+        var words = msg.split(' ');
+        for(var i in words)
+        {
+            var key = words[i];
+            var word = ConnectController.Words[key];
+            if(word)
+            {
+                word.time = time;
+                word.count++;
+                ConnectController.Words[key] = word;
+            }else
+            {
+                ConnectController.Words[key] = {time:time, count:1};
+            }
+        }
+    }
+
+    static CleanPopular()
+    {
+        var time = Date.now();
+        var delKey = [];
+        for(var key in ConnectController.Words)
+        {
+            if(time - ConnectController.Words[key].time > 5000)
+            {
+                delKey.push(key);
+            }
+        }
+        for(var i in delKey)
+        {
+            delete ConnectController.Words[delKey[i]];
+        }
+    }
 }
 
 ConnectController.wss;
@@ -111,4 +166,12 @@ ConnectController.wss;
 //todo user controller for optimization
 ConnectController.Users = {};
 ConnectController.UserCount = 0;
+
+//for /popular
+ConnectController.Words = {};
+
+setInterval(()=>{
+    ConnectController.Update();
+}, 1000);
+
 module.exports = ConnectController;

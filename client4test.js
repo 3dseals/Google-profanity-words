@@ -21,9 +21,17 @@ ws.on('message', function (message) {
 });
 
 setInterval(()=>{
-    send({type:'ping'});
+    //send({type:'ping'});
+}, 1000);
+
+// setTimeout(()=>{
+//     send({type:'msg', msg:'/stats test'+index});
+// }, 5000);
+
+setInterval(()=>{
+    send({type:'msg', msg:'test'+(index++) + ' hello' + index});
 }, 1000);
 
 setTimeout(()=>{
-    send({type:'msg', msg:'/stats test'+index});
-}, 1000);
+    send({type:'msg', msg:'/popular'});
+}, 3000);
