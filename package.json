@@ -1,0 +1,12 @@
+{
+  "name": "chatserver",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "test": "node client4test.js"
+  },
+  "dependencies": {
+    "ws": "^7.2.3"
+  }
+}
